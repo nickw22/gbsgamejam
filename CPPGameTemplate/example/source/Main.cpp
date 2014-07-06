@@ -47,12 +47,15 @@ int main()
     MyWorld* world = new MyWorld();
     world->Init();
 
+	float fOldTime = s3eTimerGetMs() / 1000.f;
     // Loop forever, until the user or the OS performs some action to quit the app
     while (!s3eDeviceCheckQuitRequest())
     {
         // Get current system time time in milliseconds
-        uint64 new_time = s3eTimerGetMs();
 
+        uint64 new_time = s3eTimerGetMs();
+		float fElapsed = (new_time / 1000.f) - fOldTime;
+		fOldTime = new_time / 1000.f;
         // Clear the drawing surface
         g_pGraphics->PreRender();
 
@@ -63,7 +66,7 @@ int main()
         g_pAudio->Update();
 
         // Update the world
-        world->Update();
+        world->Update(fElapsed);
 
         // Render the world
         world->Render();

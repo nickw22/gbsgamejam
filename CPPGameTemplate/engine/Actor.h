@@ -36,6 +36,14 @@ class World;
  */
 class Actor
 {
+public:
+	enum EActorType
+	{
+		EActorType_MyActor = 0,
+		EActorType_CustomerStore,
+		EActorType_Base
+	};
+	EActorType m_Type;
 protected:
     int			ID;					// Actors ID
     World*      Parent;             // Parent world
@@ -50,7 +58,8 @@ protected:
     bool        Touchable;          // Touchable state of object
 
 public:
-    Actor();
+	Actor();
+    Actor(EActorType eActorType);
     virtual ~Actor();
 
     /**
@@ -102,6 +111,9 @@ public:
     // Event handlers
     virtual void    Event_BeginTouch() {}
     virtual void    Event_EndTouch() {}
+
+	//Collision
+	virtual void	Collided(Actor* collidedWith){}
 };
 
 

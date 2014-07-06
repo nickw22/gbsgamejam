@@ -10,8 +10,8 @@
  * EULA and have agreed to be bound by its terms.
  */
  
-#if !defined(_MYACTOR_H)
-#define _MYACTOR_H
+#if !defined(_CUSTOMERSTORE_H_)
+#define _CUSTOMERSTORE_H_
 
 #include "Actor.h"
 
@@ -21,30 +21,18 @@
  * @brief MyActor derives from Actor to provide custom functionality.
  *
  */
-class MyActor: public Actor
+class CustomerStore: public Actor
 {
 protected:
-    float			CubeSpinSpeed;		// Speed at which cube is rotating
-    int				GridX;				// X position in grid
-    int				GridY;				// Y position in grid
-	bool			bIsMoving;			// Check whether to update to target position.
 	
 public:
-    MyActor();
+    CustomerStore();
     void			Init();
     void			Release();
     void            Update();
     void            Render();
-
-	bool			bIsSelected;		// Selected for movement
-	CIwFVec3		v3TargetPosition;	// MoveToLocation
-    // Setters / getters
-    void            setGridPosition(int x, int y);
-    int             getSymbol() const;
-
-    void			Event_BeginTouch();
-    void			Event_EndTouch();
+	virtual void	Collided(Actor* collidedWith);
 };
 
 
-#endif  // _MYACTOR_H
+#endif  // _CUSTOMERSTORE_H_

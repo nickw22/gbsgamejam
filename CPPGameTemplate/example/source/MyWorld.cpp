@@ -15,9 +15,22 @@
 #include "Resources.h"
 #include "MyWorld.h"
 #include "MyActor.h"
+#include "CustomerStore.h"
 
-MyWorld::MyWorld() : World(), GameGrid(0), GameGridWidth(6), GameGridHeight(6), GameState(eGameState_Running), 
-   CamSwing(true), StartCamSwingPos(100,20,-100), CamSwingTime(0), FinalCamSwingPos(0, 70, -5)
+MyWorld::MyWorld() 
+	: World()
+	, GameGrid(0)
+	, GameGridWidth(2)
+	, GameGridHeight(2)
+	, GameState(eGameState_Running)
+	, CamSwing(false)
+	, StartCamSwingPos(100,20,-100)
+	, CamSwingTime(0)
+	, FinalCamSwingPos(0, 100, 0)
+	, iActiveCustomers(0)
+	, fTimeSinceLastSpawn(0.f)
+	, fTimeUntilNextSpawn(5.f)
+	, iScore(0)
 {
 }
 
@@ -30,47 +43,60 @@ void MyWorld::Init()
     Round = 1;
     RoundChanged = true;
 
+
     // Generate game grid
-    RegenerateGameGrid();
+    //RegenerateGameGrid();
 
     // Create board
     Actor* board = new Actor();
     board->Init();
     board->setModel(g_pResources->Board);
     board->setTouchable(false);
+	board->setPosition(0, -10.f, 0);
     AddActor(board);
 
     // Create grid of cubes
-    float offs = CUBE_SIZE / 2.0f;
-    int *gg = GameGrid;
-    for (int y = -GameGridHeight / 2; y < GameGridHeight / 2; y++)
+    const float offs = CUBE_SIZE / 2.0f;
+    for (int i = 0; i < MAX_CUSTOMERS; ++i)
     {
-        for (int x = -GameGridWidth / 2; x < GameGridWidth / 2; x++)
-        {
-            // Create a game object
-            MyActor* actor = new MyActor();
-            actor->Init();
+		// Create a game object
+		MyActor* actor = new MyActor();
+		actor->Init();
             
-            // Set model and position
-            actor->setModel(g_pResources->Cube);
-            actor->setPosition(x * CUBE_SIZE + offs, CUBE_SIZE / 2.0f + 2.5f, y * CUBE_SIZE + offs);
-            actor->setRotation(((float)*gg) * 90.0f, 90, 0);
-            actor->setCollisionSphereRadius(CUBE_SIZE / 2.5f);
-            actor->setGridPosition(x + GameGridWidth / 2, y + GameGridHeight / 2);
-            actor->setID(0);
-
-            // Add to world to be processed and rendered
-            AddActor(actor);
-            gg++;
-        }
+		// Set model and position
+		actor->setModel(g_pResources->Cube);
+		actor->setRotation(((float)(rand() % 4)) * 90.0f, 90, 0);
+		actor->setCollisionSphereRadius(offs * 1.5f);
+		actor->setID(0);
+		actor->setVisible(false);
+		actor->setPosition(0.f, 0.f, 90.f);
+		// Add to world to be processed and rendered
+		AddActor(actor);
     }
+
+	for (int i = 0; i < 4; ++ i)
+	{
+		CustomerStore* actor = new CustomerStore();
+		actor->Init();
+            
+		// Set model and position
+		actor->setModel(g_pResources->Cube);
+		actor->setRotation(((float)(i)) * 90.0f, 90, 0);
+		actor->setScale(1.75f);
+		actor->setPosition(-45.f + (i * CUBE_SIZE * actor->getScale() * 1.8f), 0.f, -40.f);
+		actor->setCollisionSphereRadius(offs * actor->getScale() * 1.5f);
+		actor->setID(0);
+		// Add to world to be processed and rendered
+		AddActor(actor);
+	}
+	SpawnCustomer();
 
     // Create turns left label text
     Label* label = new Label();
     label->Init();
     label->setColour(200, 200, 80, 255);
     label->setFont(g_pResources->Font);
-    label->setText("TURNS LEFT");
+    label->setText("SCORE:");
     AddActor(label);
     
     // Create turns left label to show how many turns are left
@@ -121,57 +147,59 @@ void MyWorld::Release()
     World::Release();
 }
 
-void MyWorld::Update()
+void MyWorld::Update(float fElapsed)
 {
     // Adjust perspective based on dimensions of screen to keep board in view
     int max = IwGxGetScreenHeight() > IwGxGetScreenWidth() ? IwGxGetScreenHeight() : IwGxGetScreenWidth();
     setPerspective(480.0f - (1024 - max) / 2);
 
-    // Update camera swing
-    if (CamSwing)
-    {
-        float d = CamSwingTime / CAM_SWING_TIME;
-        LookFrom.x = StartCamSwingPos.x + (FinalCamSwingPos.x - StartCamSwingPos.x) * d;
-        LookFrom.y = StartCamSwingPos.y + (FinalCamSwingPos.y - StartCamSwingPos.y) * d;
-        LookFrom.z = StartCamSwingPos.z + (FinalCamSwingPos.z - StartCamSwingPos.z) * d;
-        TransformDirty = true;
-        CamSwingTime++;
-        if (CamSwingTime > CAM_SWING_TIME)
-        {
-            CamSwing = false;
-            CamSwingTime = 0;
-        }
-    }
-
     // TODO: Add world logic here
-    World::Update();
+    World::Update(fElapsed);
 
-    switch (GameState)
-    {
-    case eGameState_GameOver:
-        if (GameOverTimer.HasTimedOut())
-        {
-            RestartGame();
-        }
-        break;
-    case eGameState_Running:
-        if (TurnsLeftChanged)
-        {
-            char str[64];
-            snprintf(str, 64, "%u", TurnsLeft);
-            TurnsLeftLabel->setText(str);
-            TurnsLeftChanged = false;
-        }
-        if (RoundChanged)
-        {
-            char str[64];
-            snprintf(str, 64, "%u", Round);
-            RoundLabel->setText(str);
-            RoundChanged = false;
-        }
-        break;
-    }
+	if ( fTimeSinceLastSpawn > fTimeUntilNextSpawn)
+	{
+		fTimeSinceLastSpawn -= fTimeUntilNextSpawn;
+		SpawnCustomer();
+	}
+	fTimeSinceLastSpawn += fElapsed;
+	fTimeUntilNextSpawn -= fElapsed * 0.01f;
 
+	char buffer[16];
+	snprintf(buffer, sizeof(char) * 16, "Score: %d", iScore);
+	TurnsLeftLabel->setText(buffer);
+}
+
+void MyWorld::WorldSelected(CIwFVec3 v3PositionSelected)
+{
+	v3PositionSelected.y = 0;
+	for (_ActorIterator it = Actors.begin(); it != Actors.end(); ++it)
+	{
+		Actor* actor = (*it);
+		if ( actor->m_Type == Actor::EActorType_MyActor)
+		{
+			MyActor* myActor = NULL;
+			myActor = static_cast<MyActor*>(actor);
+			if ( myActor->bIsSelected)
+			{
+				myActor->v3TargetPosition = v3PositionSelected;
+				myActor->bIsSelected = false;
+			}
+		}
+	}
+}
+
+void MyWorld::UnselectAllActors()
+{
+	for (_ActorIterator it = Actors.begin(); it != Actors.end(); ++it)
+	{
+		Actor* actor = (*it);
+		if ( actor->m_Type == Actor::EActorType_MyActor)
+		{
+			MyActor* myActor = NULL;
+			myActor = static_cast<MyActor*>(actor);
+			myActor->bIsSelected = false;
+		}
+	}
 }
 
 void MyWorld::Render()
@@ -383,5 +411,23 @@ bool MyWorld::HasWon()
             return false;
     }
     return true;
+}
+
+void MyWorld::SpawnCustomer()
+{
+	if ( iActiveCustomers >= Actors.size())
+		return;
+	Actor* customer = Actors[iActiveCustomers++];
+	if ( customer->m_Type == Actor::EActorType_MyActor)
+	{
+		((MyActor*)customer)->v3TargetPosition = CIwFVec3(0.f, 0.f, -90.f);
+		customer->setPosition(0.f, 0.f, 90.f);
+		customer->setVisible(true);
+	}
+	else
+	{
+		SpawnCustomer();
+	}
+
 }
 

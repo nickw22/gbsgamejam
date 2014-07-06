@@ -14,49 +14,65 @@
 #include "MyActor.h"
 #include "MyWorld.h"
 
-MyActor::MyActor() : Actor(), CubeSpinSpeed(0)
+MyActor::MyActor() 
+	: Actor(EActorType_MyActor)
+	, CubeSpinSpeed(0)
+	, bIsSelected(false)
+	, bIsMoving(false)
 {
 }
 
 void MyActor::Init()
 {
     Actor::Init();
+	v3TargetPosition = CIwFVec3(0.f, 0.f, 0.f);
 }
 
 void MyActor::Release()
 {
     Actor::Release();
 }
-
+const float k_fSpeed = 1.0f;
 void MyActor::Update()
 {
     // Add actor logic here
     Actor::Update();
-    if (CubeSpinSpeed != 0)
-    {
-        Rotation.x += CubeSpinSpeed;
-        int a = (int)Rotation.x;
-        if (a == 90 || a == 180 || a == 270.0f || a == 360.0f)
-        {
-            CubeSpinSpeed = 0;
-            if (a == 360.0f)
-                Rotation.x = 0.0f;
-            MyWorld* world = (MyWorld*)Parent;
-            int cell = world->getGameGridCell(GridX, GridY);
-            cell++;
-            if (cell >= MAX_CUBE_SYMBOLS)
-                cell -= MAX_CUBE_SYMBOLS;
-            world->setGameGridCell(GridX, GridY, cell);
-            world->TakenTurn();
-        }
-        TransformDirty = true;
-    }
+
+	bool bTargetPositionValid = !(v3TargetPosition == CIwFVec3::g_Zero);
+	bool bTargetInRange = (abs(getPosition().x - v3TargetPosition.x) < 1.0f && abs(getPosition().z - v3TargetPosition.z) < 1.0f );
+	bIsMoving = bTargetPositionValid && !bTargetInRange;
+
+	if ( bIsMoving)
+	{
+		CIwFVec3 v3MoveDirection = (v3TargetPosition - getPosition()).GetNormalised();
+		CIwFVec3 v3MoveAmount = v3MoveDirection * k_fSpeed;
+		v3MoveAmount.y = 0;
+		setPosition(getPosition().x + v3MoveAmount.x, getPosition().y + v3MoveAmount.y, getPosition().z + v3MoveAmount.z);
+		TransformDirty = true;
+	}
 }
 
 void MyActor::Render()
 {
     // TODO: Add any actor specific rendering / state changes here
-    Actor::Render();
+    if (Model != 0 && Visible)
+    {
+        IwGxSetModelMatrix(&Transform);
+        IwGxLightingOn();
+		if ( bIsSelected)
+		{
+			IwGxSetColDiffuse(255, 0, 0, 255);
+			IwGxSetColAmbient(255, 0, 0, 255);
+			IwGxDebugPrimSphere( CIwFSphere( getPosition(), 5));
+		}
+		else
+		{
+			IwGxSetColDiffuse(128, 128, 128, 128);
+			IwGxSetColAmbient(128, 128, 128, 128);
+		}
+        Model->Render();
+        IwGxLightingOff();
+    }
 }
 
 int MyActor::getSymbol() const
@@ -78,8 +94,9 @@ void MyActor::Event_EndTouch()
 {
     if (CubeSpinSpeed == 0 && ((MyWorld*)Parent)->getGameState() == eGameState_Running)
     {
-        CubeSpinSpeed = 5.0f;
         TransformDirty = true;
         g_pAudio->PlaySound("turn.wav");
+		((MyWorld*)Parent)->UnselectAllActors();
+		bIsSelected = true;
     }
 }

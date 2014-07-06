@@ -12,7 +12,31 @@
 
 #include "Actor.h"
 
-Actor::Actor() : Parent(0), TransformDirty(true), Model(0), Position(0, 0, 0), Scale(1.0f), Rotation(0, 0, 0), Visible(true), Touchable(true), ID(-1)
+Actor::Actor()
+	: m_Type( EActorType_Base)
+	, Parent(0)
+	, TransformDirty(true)
+	, Model(0)
+	, Position(0, 0, 0)
+	, Scale(1.0f)
+	, Rotation(0, 0, 0)
+	, Visible(true)
+	, Touchable(true)
+	, ID(-1) 
+{
+}
+
+Actor::Actor(EActorType eActorType) 
+	: m_Type( eActorType)
+	, Parent(0)
+	, TransformDirty(true)
+	, Model(0)
+	, Position(0, 0, 0)
+	, Scale(1.0f)
+	, Rotation(0, 0, 0)
+	, Visible(true)
+	, Touchable(true)
+	, ID(-1)
 {
 }
 
@@ -146,4 +170,5 @@ bool Actor::isTouchable() const
 {
     return Touchable;
 }
+
 

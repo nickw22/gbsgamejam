@@ -14,7 +14,7 @@
 #include "Actor.h"
 #include "Input.h"
 
-World::World() : TransformDirty(true), LookFrom(0, 70, -5), LookTo(0, 0, 0), LookUp(0, -1, 0), FarZ(1000), NearZ(10), Perspective(500), TouchedActor(0)
+World::World() : TransformDirty(true), LookFrom(0, 80, 0), LookTo(0, 0, 0), LookUp(0, -1, 0), FarZ(1000), NearZ(10), Perspective(500), TouchedActor(0)
 {
 }
 
@@ -24,6 +24,7 @@ World::~World()
 
 void World::Init()
 {
+	TouchPlane = CIwFPlane(CIwFVec3(0.0f, 1.0f, 0.0f), 0);
 }
 
 void World::Release()
@@ -36,7 +37,17 @@ void World::Release()
     }
 }
 
-void World::Update()
+bool SphereIntersected(const CIwFSphere& sp0, const CIwFSphere& sp1)
+{
+	CIwFVec3 d = sp0.t - sp1.t;
+		
+	// Calculate the sum of the radii, then square it
+	double sumRadii = sp0.r + sp1.r;
+
+	return (d.GetLength() <= sumRadii);
+}
+
+void World::Update(float fElapsed)
 {
     if (TransformDirty)
     {
@@ -63,6 +74,12 @@ void World::Update()
         // Check for user starting to touch an object in the world
         if (g_pInput->m_Touched && !g_pInput->m_PrevTouched)
         {
+			float intersectPoint = 0.0f;
+			CIwFVec3 RayWithLength = TouchRay * 1000;
+			if (IwIntersectLineSegPlaneOneSided(ViewTransform.t, RayWithLength, TouchPlane, intersectPoint, false))
+			{
+				WorldSelected((ViewTransform.t + RayWithLength) * intersectPoint);
+			}
             for (_ActorIterator it = Actors.begin(); it != Actors.end(); ++it)
             {
                 if ((*it)->isTouchable())
@@ -87,14 +104,31 @@ void World::Update()
             if (TouchedActor->isTouchable())
             {
                 // Check for intersection between touch ray and game object
-                if (IwIntersectLineSphere(ViewTransform.t, TouchRay, TouchedActor->getCollisionSphere()))
+				if (IwIntersectLineSphere(ViewTransform.t, TouchRay, TouchedActor->getCollisionSphere()))
+				{
                     TouchedActor->Event_EndTouch();
+				}
             }
-            TouchedActor = 0;
+			TouchedActor = NULL;
         }
     }
+	for (_ActorIterator it = Actors.begin(); it != Actors.end(); ++it)
+	{
+		for (_ActorIterator it2 = Actors.begin(); it2 != Actors.end(); ++it2)
+		{
+			if ( (*it)->isVisible() && (*it2)->isVisible())
+			{
+				if ( SphereIntersected((*it)->getCollisionSphere(), (*it2)->getCollisionSphere()))
+				{
+					(*it)->Collided((*it2));
+				}
+			}
+		}
+	}
    
 }
+
+
 
 void World::Render()
 {
@@ -137,8 +171,15 @@ void World::AddActor(Actor* actor)
 
 void World::RemoveActor(Actor* actor)
 {
-    Actors.remove(actor);
-    actor->setParent(0);
+	actor->setParent(0);
+	for (unsigned int i = 0; i < Actors.size(); ++i)
+    {
+		if (Actors[i] == actor)
+		{
+			Actors[i] = Actors.back();
+			Actors.pop_back();
+		}
+	}
 }
 
 void World::setFarNearZ(float far_z, float near_z)

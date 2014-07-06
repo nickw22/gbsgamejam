@@ -16,6 +16,8 @@ files
     MyWorld.h
     Resources.cpp
     Resources.h
+	CustomerStore.h
+	CustomerStore.cpp
 
     [Data]
     (data)

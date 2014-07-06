@@ -14,7 +14,7 @@
 #define _WORLD_H
 
 #include "IwGeom.h"
-#include <list>
+#include <vector>
 
 class Actor;
 
@@ -47,9 +47,9 @@ class Actor;
 class World
 {
 public:
-    typedef std::list<Actor*>::iterator _ActorIterator;
+    typedef std::vector<Actor*>::iterator _ActorIterator;
 protected:
-    std::list<Actor*>	Actors;				// List of world objects
+    std::vector<Actor*>	Actors;				// List of world objects
     CIwFVec3			LookFrom;			// Camera look from position
     CIwFVec3			LookTo;				// Camera look to position
     CIwFVec3			LookUp;				// Camera look up vector
@@ -60,7 +60,7 @@ protected:
     bool				TransformDirty;		// Transform dirty flag
     CIwFVec3			TouchRay;			// A ray that points to view plane from camera
     Actor*				TouchedActor;		// Actor that was last touched
-
+	CIwFPlane			TouchPlane;			// Touch Plane is Sitting on.
 public:
     World();
     virtual  ~World();
@@ -84,7 +84,7 @@ public:
      *
      * @brief Updates the world system, called every frame
      */
-    virtual void    Update();
+    virtual void    Update(float fElapsed);
 
     /**
      * @fn    void World::Render()
@@ -117,6 +117,8 @@ public:
     void	setPerspective(float perspective);
     Actor*  getTouchedActor();
     const	CIwFMat& getViewTransform() const;
+
+	virtual void WorldSelected(const CIwFVec3 v3PositionSelected){}
 };
 
 

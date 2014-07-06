@@ -17,8 +17,9 @@
 #include "Timers.h"
 
 #define MAX_CUBE_SYMBOLS	4
-#define CUBE_SIZE	10
+#define CUBE_SIZE	9.8f
 #define	CAM_SWING_TIME		50
+#define MAX_CUSTOMERS		20
 
 class Label;
 
@@ -54,12 +55,16 @@ protected:
     CIwFVec3        StartCamSwingPos;   // Camera swing position to start from
     CIwFVec3        FinalCamSwingPos;   // Final resting position of camera
     float           CamSwingTime;       // Time since swing started
+	float			fTimeUntilNextSpawn; // Time until next Spawn
+	float			fTimeSinceLastSpawn; // Time Since Last Spawn
+	unsigned int	iActiveCustomers;	 // current active customers
 
 public:
+	unsigned int	iScore;
     MyWorld();
     void			Init();
     void			Release();
-    void            Update();
+    void            Update(float fElapsed);
     void            Render();
 
     // Setters / getters
@@ -78,6 +83,9 @@ public:
     void            CalculateLeastTurnsNeeded();
     int             RaiseMostPopularSymbol();
     bool            HasWon();
+	virtual void	WorldSelected(const CIwFVec3 v3PositionSelected);
+	void			UnselectAllActors();
+	void			SpawnCustomer();
 };
 
 
